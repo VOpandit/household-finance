@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vinayak & Vaishnavi - Shared Finance Hub</title>
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- PptxGenJS CDN for Client-Side PPT Presentation Generation -->
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card-bg: #1e293b;
+      --card-sub: #162032;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --income: #34d399;
+      --expense: #f87171;
+      --cc: #a78bfa;
+      --debt: #fbbf24;
+      --emi: #f43f5e;
+      --wa: #25d366;
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 880px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding-bottom: 40px;
+    }
+
+    /* Top Bar */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .top-bar h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-sync {
+      font-size: 0.72rem;
+      padding: 4px 8px;
+      border-radius: 20px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+
+    .active-profile {
+      font-size: 0.85rem;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-weight: 600;
+      outline: none;
+    }
+
+    /* EMI Reminder Banner */
+    .reminder-box {
+      display: none;
+      background: rgba(244, 63, 94, 0.12);
+      border: 1px solid var(--emi);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .reminder-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      color: var(--emi);
+      font-size: 0.95rem;
+    }
+
+    .reminder-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.84rem;
+      color: #cbd5e1;
+    }
+
+    /* Action Toolbar (PPT, Alerts, WhatsApp) */
+    .action-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(167, 139, 250, 0.12));
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      flex-wrap: wrap;
+    }
+
+    .btn-action-pill {
+      background: #ea580c;
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-notif { background: #0284c7; }
+    .btn-wa { background: #16a34a; }
+
+    /* Sync Config Banner */
+    .sync-banner {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 12px 14px;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sync-btn-link {
+      background: var(--debt);
+      color: #0b1120;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    /* Filter Bar for Dashboard */
+    .month-filter-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      border-radius: var(--radius);
+    }
+
+    /* Financial Dashboard Summary Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    @media (min-width: 700px) {
+      .stats-grid {
+        grid-template-columns: repeat(5, 1fr);
+      }
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .stat-card span {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-card .val {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .val.inc { color: var(--income); }
+    .val.exp { color: var(--expense); }
+    .val.emi { color: var(--emi); }
+    .val.debt { color: var(--debt); }
+    .val.cc { color: var(--cc); }
+
+    /* Net Balance Banner */
+    .net-banner {
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Tabs */
+    .nav-tabs {
+      display: flex;
+      background: var(--card-bg);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      gap: 4px;
+      overflow-x: auto;
+    }
+
+    .nav-btn {
+      flex: 1;
+      padding: 8px 12px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.8rem;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .nav-btn.active {
+      background: var(--accent);
+      color: #0b1120;
+    }
+
+    /* Section Cards */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+
+    .card h2 {
+      font-size: 1.05rem;
+      margin-bottom: 14px;
+    }
+
+    /* Tables for Monthly Dashboard */
+    .table-container {
+      overflow-x: auto;
+      margin-top: 12px;
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    table.data-table th {
+      background: #162032;
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+    }
+
+    table.data-table td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    table.data-table tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    input, select, button {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent);
+    }
+
+    .btn-submit {
+      background: var(--accent);
+      color: #0b1120;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+    }
+
+    /* Feed List */
+    .feed {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .entry {
+      background: var(--card-sub);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .entry-main {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .entry-title {
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+
+    .entry-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .tag-user {
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.18);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      font-weight: 600;
+    }
+
+    .tag-emi-day {
+      background: rgba(244, 63, 94, 0.2);
+      color: var(--emi);
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .entry-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .entry-amt {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .btn-del {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.72rem;
+      padding: 4px 6px;
+      border-radius: 4px;
+    }
+
+    .btn-settle {
+      background: transparent;
+      border: 1px solid var(--income);
+      color: var(--income);
+      cursor: pointer;
+      font-size: 0.72rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .btn-share-wa {
+      background: rgba(37, 211, 102, 0.15);
+      border: 1px solid var(--wa);
+      color: var(--wa);
+      cursor: pointer;
+      font-size: 0.72rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .settled-item {
+      opacity: 0.45;
+      text-decoration: line-through;
+    }
+
+    /* Modals */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      z-index: 100;
+    }
+
+    .modal-content {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      max-width: 480px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Top Header -->
+    <div class="top-bar">
+      <div>
+        <h1>Household Hub <span class="badge-sync" id="sync-status">Local Mode</span></h1>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <select id="current-user" class="active-profile" onchange="changeProfile(this.value)">
+          <option value="Vinayak">Vinayak</option>
+          <option value="Vaishnavi">Vaishnavi</option>
+        </select>
+        <button onclick="toggleModal(true)" style="padding: 6px 10px; font-size: 0.75rem; cursor: pointer;">Cloud Sync</button>
+      </div>
+    </div>
+
+    <!-- Active EMI Deductions Alert Box -->
+    <div class="reminder-box" id="emi-reminder-box">
+      <div class="reminder-header">
+        <span>⏰ Upcoming EMI Deductions Alert</span>
+      </div>
+      <div class="reminder-list" id="emi-reminder-items"></div>
+    </div>
+
+    <!-- Monthly Report / Export Bar -->
+    <div class="action-toolbar">
+      <div>
+        <div style="font-weight: 700; font-size: 0.9rem;">Automations & Exports</div>
+        <div style="font-size: 0.76rem; color: var(--text-muted);">WhatsApp group notifications, push alerts & monthly PPT</div>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn-action-pill btn-wa" onclick="toggleWaModal(true)">
+          <span>💬</span> WhatsApp Webhook
+        </button>
+        <button class="btn-action-pill btn-notif" onclick="requestNotificationAccess()">
+          <span>🔔</span> Enable Alerts
+        </button>
+        <button class="btn-action-pill" onclick="generatePPT()">
+          <span>📊</span> Export PPT
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Sync Alert -->
+    <div class="sync-banner" id="cloud-banner">
+      <span>Vinayak & Vaishnavi: Connect Supabase for free to sync live across both phones.</span>
+      <button class="sync-btn-link" onclick="toggleModal(true)">Setup Sync</button>
+    </div>
+
+    <!-- Month Filter Bar for Dashboard Analysis -->
+    <div class="month-filter-bar">
+      <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Selected View Month:</span>
+      <input type="month" id="dashboard-month" style="padding: 6px 10px; width: 170px;" onchange="render()">
+    </div>
+
+    <!-- Financial Snapshot Counters (Filtered by Selected Month) -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span>Monthly Income</span>
+        <div class="val inc" id="stat-inc">₹0</div>
+      </div>
+      <div class="stat-card">
+        <span>Total Expenses</span>
+        <div class="val exp" id="stat-exp">₹0</div>
+      </div>
+      <div class="stat-card">
+        <span>Monthly EMIs</span>
+        <div class="val emi" id="stat-emi">₹0</div>
+      </div>
+      <div class="stat-card">
+        <span>Active Debts</span>
+        <div class="val debt" id="stat-debt">₹0</div>
+      </div>
+      <div class="stat-card">
+        <span>Card Balances</span>
+        <div class="val cc" id="stat-cc">₹0</div>
+      </div>
+    </div>
+
+    <div class="net-banner">
+      <div>
+        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Net Monthly Savings Margin</div>
+        <div style="font-size: 1.4rem; font-weight: 800; margin-top: 4px;" id="stat-margin">₹0</div>
+      </div>
+      <div style="text-align: right; font-size: 0.78rem; color: var(--text-muted);">
+        Income minus Expenses & EMIs<br>(Actual Retained Savings)
+      </div>
+    </div>
+
+    <!-- Tab Navigation (Dashboard Added) -->
+    <div class="nav-tabs">
+      <button class="nav-btn active" onclick="setTab('dashboard')">📊 Dashboard</button>
+      <button class="nav-btn" onclick="setTab('expense')">Expenses</button>
+      <button class="nav-btn" onclick="setTab('emi')">EMIs / Loans</button>
+      <button class="nav-btn" onclick="setTab('income')">Income</button>
+      <button class="nav-btn" onclick="setTab('debt')">Hand Loans</button>
+      <button class="nav-btn" onclick="setTab('card')">Credit Cards</button>
+    </div>
+
+    <!-- 0. Monthly Dashboard & Analytics Tab -->
+    <div id="view-dashboard" class="tab-view">
+      <!-- Table 1: Month-by-Month Financial Ledger -->
+      <div class="card" style="margin-bottom: 16px;">
+        <h2>All-Time Monthly Financial Summary Table</h2>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Total Income</th>
+                <th>Total Expenses</th>
+                <th>Total EMIs</th>
+                <th>Net Savings</th>
+                <th>Savings Rate</th>
+              </tr>
+            </thead>
+            <tbody id="table-monthly-summary"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Table 2: User-wise Spending Comparison (Vinayak vs Vaishnavi) -->
+      <div class="card" style="margin-bottom: 16px;">
+        <h2>Spender Breakdown for Selected Month</h2>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Person</th>
+                <th>Total Spent</th>
+                <th>Entries Count</th>
+                <th>Top Category</th>
+                <th>Share of Total</th>
+              </tr>
+            </thead>
+            <tbody id="table-user-summary"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Table 3: Category Breakdown for Selected Month -->
+      <div class="card">
+        <h2>Category Breakdown for Selected Month</h2>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Total Spent</th>
+                <th>Entries Count</th>
+                <th>Percentage</th>
+              </tr>
+            </thead>
+            <tbody id="table-category-summary"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1. Expense Tab -->
+    <div id="view-expense" class="tab-view" style="display: none;">
+      <div class="card">
+        <h2>Log Daily Expense</h2>
+        <form onsubmit="handleFormSubmit(event, 'expense')">
+          <input type="text" id="exp-title" placeholder="Description / Purpose" required>
+          <input type="number" id="exp-amount" placeholder="Amount (₹)" step="any" min="0.01" required>
+          <input type="date" id="exp-date" title="Expense Date" required>
+          <select id="exp-cat">
+            <option value="Medical & Hospital">Medical & Hospital</option>
+            <option value="Holiday & Travel">Holiday & Travel</option>
+            <option value="Hotel & Dining">Hotel & Dining</option>
+            <option value="Groceries & Food">Groceries & Food</option>
+            <option value="Bills & Utilities">Bills & Utilities</option>
+            <option value="Fuel & Transportation">Fuel & Transportation</option>
+            <option value="Rent & Housing">Rent & Housing</option>
+            <option value="Shopping & Lifestyle">Shopping & Lifestyle</option>
+            <option value="Other">Other</option>
+          </select>
+          <button type="submit" class="btn-submit">Add Expense</button>
+        </form>
+      </div>
+      <div class="feed" id="feed-expense"></div>
+    </div>
+
+    <!-- 2. EMI Tab -->
+    <div id="view-emi" class="tab-view" style="display: none;">
+      <div class="card">
+        <h2>Track Recurring EMI & Deduction Day</h2>
+        <form onsubmit="handleFormSubmit(event, 'emi')">
+          <input type="text" id="emi-title" placeholder="Loan Name (e.g., Home, Car, Phone)" required>
+          <input type="number" id="emi-amount" placeholder="Monthly EMI (₹)" step="any" min="0.01" required>
+          <input type="number" id="emi-day" placeholder="Deduction Day of Month (1-31)" min="1" max="31" required>
+          <input type="number" id="emi-remind" placeholder="Remind days before (e.g. 3)" min="1" max="15" value="3" required>
+          <input type="text" id="emi-bank" placeholder="Bank / Source (e.g., SBI, HDFC)">
+          <button type="submit" class="btn-submit">Register EMI</button>
+        </form>
+      </div>
+      <div class="feed" id="feed-emi"></div>
+    </div>
+
+    <!-- 3. Income Tab -->
+    <div id="view-income" class="tab-view" style="display: none;">
+      <div class="card">
+        <h2>Record Income / Salary</h2>
+        <form onsubmit="handleFormSubmit(event, 'income')">
+          <input type="text" id="inc-title" placeholder="Source (Salary, Freelance, Dividend)" required>
+          <input type="number" id="inc-amount" placeholder="Amount (₹)" step="any" min="0.01" required>
+          <input type="month" id="inc-month" required>
+          <button type="submit" class="btn-submit">Add Income</button>
+        </form>
+      </div>
+      <div class="feed" id="feed-income"></div>
+    </div>
+
+    <!-- 4. Debts Tab -->
+    <div id="view-debt" class="tab-view" style="display: none;">
+      <div class="card">
+        <h2>Track Hand Loans & Personal Debts</h2>
+        <form onsubmit="handleFormSubmit(event, 'debt')">
+          <input type="text" id="debt-title" placeholder="Person / Friend Name" required>
+          <input type="number" id="debt-amount" placeholder="Amount (₹)" step="any" min="0.01" required>
+          <input type="date" id="debt-due" title="Due Date">
+          <button type="submit" class="btn-submit">Add Debt</button>
+        </form>
+      </div>
+      <div class="feed" id="feed-debt"></div>
+    </div>
+
+    <!-- 5. Credit Cards Tab -->
+    <div id="view-card" class="tab-view" style="display: none;">
+      <div class="card">
+        <h2>Track Credit Card Outstanding</h2>
+        <form onsubmit="handleFormSubmit(event, 'card')">
+          <input type="text" id="card-name" placeholder="Card Name (e.g., HDFC Millennia)" required>
+          <input type="number" id="card-amount" placeholder="Statement Balance (₹)" step="any" min="0.01" required>
+          <input type="date" id="card-due" title="Payment Due Date" required>
+          <button type="submit" class="btn-submit">Log Card Bill</button>
+        </form>
+      </div>
+      <div class="feed" id="feed-card"></div>
+    </div>
+  </div>
+
+  <!-- WhatsApp Webhook Modal -->
+  <div class="modal" id="wa-modal">
+    <div class="modal-content">
+      <h3 style="font-size: 1.1rem; color: var(--wa);">WhatsApp Group Bot Setup</h3>
+      <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+        To push automated alerts to your WhatsApp group, connect an automation webhook (like <b>Make.com</b>, <b>WPPConnect</b>, <b>Twilio</b>, or a self-hosted Baileys gateway). Paste your Webhook URL below:
+      </p>
+      <input type="url" id="wa-webhook-url" placeholder="https://hook.eu1.make.com/your-token-here">
+      <div style="font-size: 0.74rem; color: #64748b;">
+        * Whenever Vinayak or Vaishnavi logs an expense, a JSON payload is automatically POSTed here to broadcast to your group.
+      </div>
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
+        <button onclick="toggleWaModal(false)" style="background: transparent; color: var(--text-muted); border: 1px solid var(--border);">Cancel</button>
+        <button class="btn-submit" onclick="saveWaConfig()">Save Webhook</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase Cloud Credentials Modal -->
+  <div class="modal" id="sync-modal">
+    <div class="modal-content">
+      <h3 style="font-size: 1.1rem;">Connect Realtime 2-Device Sync</h3>
+      <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+        Create a 100% free project at <b>supabase.com</b>, create a table named <code>finance_records</code>, and paste your API details below. Both devices will share the exact same ledger live.
+      </p>
+      <input type="text" id="cfg-url" placeholder="Supabase Project URL (https://xyz.supabase.co)">
+      <input type="text" id="cfg-key" placeholder="Supabase Anon Public API Key">
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
+        <button onclick="toggleModal(false)" style="background: transparent; color: var(--text-muted); border: 1px solid var(--border);">Cancel</button>
+        <button class="btn-submit" onclick="saveCloudConfig()">Save & Connect</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeProfile = localStorage.getItem('profile_name') || 'Vinayak';
+    let records = JSON.parse(localStorage.getItem('ft_records_full')) || [];
+    let waWebhook = localStorage.getItem('wa_webhook_url') || '';
+    let supabaseClient = null;
+
+    const formatter = new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    });
+
+    const currentYearMonth = new Date().toISOString().slice(0, 7);
+    document.getElementById('dashboard-month').value = currentYearMonth;
+    document.getElementById('inc-month').value = currentYearMonth;
+    if (document.getElementById('exp-date')) {
+      document.getElementById('exp-date').value = new Date().toISOString().slice(0, 10);
+    }
+    
+    if (activeProfile !== 'Vinayak' && activeProfile !== 'Vaishnavi') {
+      activeProfile = 'Vinayak';
+      localStorage.setItem('profile_name', 'Vinayak');
+    }
+    document.getElementById('current-user').value = activeProfile;
+
+    const savedUrl = localStorage.getItem('sb_url');
+    const savedKey = localStorage.getItem('sb_key');
+
+    if (savedUrl && savedKey && window.supabase) {
+      initSupabase(savedUrl, savedKey);
+    }
+
+    function initSupabase(url, key) {
+      try {
+        supabaseClient = window.supabase.createClient(url, key);
+        document.getElementById('sync-status').textContent = 'Cloud Synced (Live)';
+        document.getElementById('sync-status').style.color = '#34d399';
+        document.getElementById('sync-status').style.borderColor = '#34d399';
+        document.getElementById('cloud-banner').style.display = 'none';
+
+        supabaseClient
+          .channel('public:finance_records')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_records' }, () => {
+            fetchRemoteRecords();
+          })
+          .subscribe();
+
+        fetchRemoteRecords();
+      } catch (err) {
+        console.error("Cloud init failure:", err);
+      }
+    }
+
+    async function fetchRemoteRecords() {
+      if (!supabaseClient) return;
+      const { data, error } = await supabaseClient.from('finance_records').select('*').order('created_at', { ascending: false });
+      if (error) {
+        console.error("Fetch Error:", error);
+        document.getElementById('sync-status').textContent = 'Sync Error';
+        document.getElementById('sync-status').style.color = '#f87171';
+        document.getElementById('sync-status').style.borderColor = '#f87171';
+      } else if (data) {
+        records = data;
+        localStorage.setItem('ft_records_full', JSON.stringify(records));
+        render();
+      }
+    }
+
+    function toggleModal(show) {
+      document.getElementById('sync-modal').style.display = show ? 'flex' : 'none';
+      if (show) {
+        document.getElementById('cfg-url').value = localStorage.getItem('sb_url') || '';
+        document.getElementById('cfg-key').value = localStorage.getItem('sb_key') || '';
+      }
+    }
+
+    function toggleWaModal(show) {
+      document.getElementById('wa-modal').style.display = show ? 'flex' : 'none';
+      if (show) {
+        document.getElementById('wa-webhook-url').value = localStorage.getItem('wa_webhook_url') || '';
+      }
+    }
+
+    function saveCloudConfig() {
+      const url = document.getElementById('cfg-url').value.trim();
+      const key = document.getElementById('cfg-key').value.trim();
+      if (url && key) {
+        localStorage.setItem('sb_url', url);
+        localStorage.setItem('sb_key', key);
+        initSupabase(url, key);
+      }
+      toggleModal(false);
+    }
+
+    function saveWaConfig() {
+      waWebhook = document.getElementById('wa-webhook-url').value.trim();
+      localStorage.setItem('wa_webhook_url', waWebhook);
+      toggleWaModal(false);
+      alert('WhatsApp webhook URL configured successfully!');
+    }
+
+    function changeProfile(val) {
+      activeProfile = val;
+      localStorage.setItem('profile_name', val);
+    }
+
+    function setTab(tab) {
+      const tabs = ['dashboard', 'expense', 'emi', 'income', 'debt', 'card'];
+      tabs.forEach(t => {
+        document.getElementById(`view-${t}`).style.display = t === tab ? 'block' : 'none';
+      });
+      document.querySelectorAll('.nav-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', tabs[idx] === tab);
+      });
+    }
+
+    function requestNotificationAccess() {
+      if (!("Notification" in window)) {
+        alert("This browser does not support desktop/mobile notifications.");
+        return;
+      }
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          new Notification("Reminders Activated! 🔔", {
+            body: "You will receive timely alerts before your EMI deduction dates.",
+            icon: ""
+          });
+          checkAndTriggerReminders();
+        } else {
+          alert("Notification access was denied. You will still see the banner alert inside the app!");
+        }
+      });
+    }
+
+    // Helper to get month string YYYY-MM
+    function getRecordMonth(record) {
+      if (record.month) return record.month;
+      if (record.expenseDate) return record.expenseDate.slice(0, 7);
+      if (record.created_at) return record.created_at.slice(0, 7);
+      return new Date().toISOString().slice(0, 7);
+    }
+
+    // WhatsApp Message Helper
+    function sendWhatsAppAlert(record) {
+      const formattedAmt = formatter.format(record.amount);
+      const textMsg = `💰 *New Expense Added*
+• *Amount:* ${formattedAmt}
+• *Purpose:* ${record.title}
+• *Category:* ${record.category}
+• *Logged By:* ${record.created_by}
+• *Date:* ${record.expenseDate || new Date().toLocaleDateString('en-IN')}`;
+
+      if (waWebhook) {
+        fetch(waWebhook, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'new_expense',
+            message: textMsg,
+            record: record
+          })
+        }).catch(err => console.error("Webhook notification error:", err));
+      }
+
+      return encodeURIComponent(textMsg);
+    }
+
+    async function handleFormSubmit(e, type) {
+      e.preventDefault();
+      let record = {
+        id: Date.now().toString(),
+        type: type,
+        created_by: activeProfile,
+        created_at: new Date().toISOString()
+      };
+
+      if (type === 'expense') {
+        record.title = document.getElementById('exp-title').value.trim();
+        record.amount = parseFloat(document.getElementById('exp-amount').value);
+        record.category = document.getElementById('exp-cat').value;
+        record.expenseDate = document.getElementById('exp-date').value || new Date().toISOString().slice(0, 10);
+        document.getElementById('exp-title').value = '';
+        document.getElementById('exp-amount').value = '';
+        document.getElementById('exp-date').value = new Date().toISOString().slice(0, 10);
+
+        sendWhatsAppAlert(record);
+
+      } else if (type === 'emi') {
+        record.title = document.getElementById('emi-title').value.trim();
+        record.amount = parseFloat(document.getElementById('emi-amount').value);
+        record.emiDay = parseInt(document.getElementById('emi-day').value, 10);
+        record.remindDaysBefore = parseInt(document.getElementById('emi-remind').value, 10) || 3;
+        record.bank = document.getElementById('emi-bank').value.trim() || 'Bank Auto-Debit';
+        document.getElementById('emi-title').value = '';
+        document.getElementById('emi-amount').value = '';
+        document.getElementById('emi-day').value = '';
+        document.getElementById('emi-bank').value = '';
+      } else if (type === 'income') {
+        record.title = document.getElementById('inc-title').value.trim();
+        record.amount = parseFloat(document.getElementById('inc-amount').value);
+        record.month = document.getElementById('inc-month').value;
+        document.getElementById('inc-title').value = '';
+        document.getElementById('inc-amount').value = '';
+      } else if (type === 'debt') {
+        record.title = document.getElementById('debt-title').value.trim();
+        record.amount = parseFloat(document.getElementById('debt-amount').value);
+        record.dueDate = document.getElementById('debt-due').value || null;
+        record.settled = false;
+        document.getElementById('debt-title').value = '';
+        document.getElementById('debt-amount').value = '';
+      } else if (type === 'card') {
+        record.title = document.getElementById('card-name').value.trim();
+        record.amount = parseFloat(document.getElementById('card-amount').value);
+        record.dueDate = document.getElementById('card-due').value;
+        record.settled = false;
+        document.getElementById('card-name').value = '';
+        document.getElementById('card-amount').value = '';
+      }
+
+      records.unshift(record);
+      persist(record, 'insert');
+      render();
+    }
+
+    async function toggleSettle(id) {
+      const idx = records.findIndex(r => r.id === id);
+      if (idx !== -1) {
+        records[idx].settled = !records[idx].settled;
+        persist(records[idx], 'update');
+        render();
+      }
+    }
+
+    async function deleteRecord(id) {
+      const itemToDelete = records.find(r => r.id === id);
+      records = records.filter(r => r.id !== id);
+      persist(itemToDelete, 'delete');
+      render();
+    }
+
+    async function persist(item, action) {
+      localStorage.setItem('ft_records_full', JSON.stringify(records));
+      if (!supabaseClient) return;
+
+      let res;
+      if (action === 'insert') {
+        res = await supabaseClient.from('finance_records').insert([item]);
+      } else if (action === 'update') {
+        res = await supabaseClient.from('finance_records').update(item).eq('id', item.id);
+      } else if (action === 'delete') {
+        res = await supabaseClient.from('finance_records').delete().eq('id', item.id);
+      }
+      if (res && res.error) {
+        console.error("Supabase Sync Error:", res.error);
+        alert("Sync Warning: " + res.error.message + "
+Please ensure you ran the complete SQL schema in Supabase.");
+      }
+    }
+
+    function checkAndTriggerReminders() {
+      const now = new Date();
+      const today = now.getDate();
+      const emiList = records.filter(r => r.type === 'emi');
+      const urgentAlerts = [];
+
+      emiList.forEach(emi => {
+        let diff = emi.emiDay - today;
+        if (diff < 0) {
+          const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+          diff = (daysInCurrentMonth - today) + emi.emiDay;
+        }
+
+        const remindThreshold = emi.remindDaysBefore || 3;
+        if (diff >= 0 && diff <= remindThreshold) {
+          urgentAlerts.push({
+            title: emi.title,
+            amount: emi.amount,
+            diff: diff,
+            day: emi.emiDay,
+            bank: emi.bank
+          });
+        }
+      });
+
+      const reminderBox = document.getElementById('emi-reminder-box');
+      const reminderItems = document.getElementById('emi-reminder-items');
+
+      if (urgentAlerts.length > 0) {
+        reminderBox.style.display = 'flex';
+        reminderItems.innerHTML = urgentAlerts.map(a => {
+          const timingText = a.diff === 0 
+            ? '⚠️ <b>Deduction is TODAY!</b> Ensure sufficient bank balance.' 
+            : `Deduction in <b>${a.diff} day${a.diff > 1 ? 's' : ''}</b> (${a.day}th of month).`;
+          return `<div>• <b>${a.title}</b> (${formatter.format(a.amount)} from ${a.bank}): ${timingText}</div>`;
+        }).join('');
+
+        if (Notification.permission === "granted") {
+          urgentAlerts.forEach(a => {
+            const bodyMsg = a.diff === 0 
+              ? `${a.title} of ${formatter.format(a.amount)} is scheduled for deduction TODAY!` 
+              : `${a.title} of ${formatter.format(a.amount)} will be deducted in ${a.diff} day(s).`;
+            new Notification(`EMI Alert: ${a.title}`, { body: bodyMsg });
+          });
+        }
+      } else {
+        reminderBox.style.display = 'none';
+      }
+    }
+
+    function render() {
+      const selectedMonth = document.getElementById('dashboard-month').value || currentYearMonth;
+
+      // Filtered records by the selected month
+      const currentMonthExpenses = records.filter(r => r.type === 'expense' && getRecordMonth(r) === selectedMonth);
+      const currentMonthIncome = records.filter(r => r.type === 'income' && (r.month === selectedMonth || getRecordMonth(r) === selectedMonth));
+      const activeEmis = records.filter(r => r.type === 'emi');
+      
+      const totalExpMonth = currentMonthExpenses.reduce((s, r) => s + r.amount, 0);
+      const totalIncMonth = currentMonthIncome.reduce((s, r) => s + r.amount, 0);
+      const totalEmiMonth = activeEmis.reduce((s, r) => s + r.amount, 0);
+      
+      const totalDebt = records.filter(r => r.type === 'debt' && !r.settled).reduce((s, r) => s + r.amount, 0);
+      const totalCard = records.filter(r => r.type === 'card' && !r.settled).reduce((s, r) => s + r.amount, 0);
+
+      // Counters (Filtered by month)
+      document.getElementById('stat-exp').textContent = formatter.format(totalExpMonth);
+      document.getElementById('stat-inc').textContent = formatter.format(totalIncMonth);
+      document.getElementById('stat-emi').textContent = formatter.format(totalEmiMonth);
+      document.getElementById('stat-debt').textContent = formatter.format(totalDebt);
+      document.getElementById('stat-cc').textContent = formatter.format(totalCard);
+
+      const margin = totalIncMonth - (totalExpMonth + totalEmiMonth);
+      const marginEl = document.getElementById('stat-margin');
+      marginEl.textContent = formatter.format(margin);
+      marginEl.style.color = margin >= 0 ? 'var(--income)' : 'var(--expense)';
+
+      // -------------------------------------------------------------
+      // DASHBOARD TABLE 1: All-Time Month-by-Month Summary Table
+      // -------------------------------------------------------------
+      const allMonthsSet = new Set();
+      allMonthsSet.add(selectedMonth);
+      records.forEach(r => {
+        allMonthsSet.add(getRecordMonth(r));
+      });
+      const sortedMonths = Array.from(allMonthsSet).filter(Boolean).sort().reverse();
+
+      const tableMonthlyEl = document.getElementById('table-monthly-summary');
+      if (sortedMonths.length === 0) {
+        tableMonthlyEl.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No monthly data yet.</td></tr>';
+      } else {
+        tableMonthlyEl.innerHTML = sortedMonths.map(m => {
+          const incM = records.filter(r => r.type === 'income' && getRecordMonth(r) === m).reduce((s, r) => s + r.amount, 0);
+          const expM = records.filter(r => r.type === 'expense' && getRecordMonth(r) === m).reduce((s, r) => s + r.amount, 0);
+          const emiM = totalEmiMonth; // Recurring monthly
+          const netM = incM - (expM + emiM);
+          const rateM = incM > 0 ? ((netM / incM) * 100).toFixed(1) + '%' : '0.0%';
+          const isSelected = m === selectedMonth;
+
+          return `
+            <tr style="${isSelected ? 'background: rgba(56, 189, 248, 0.08); font-weight:600;' : ''}">
+              <td><b>${m}</b> ${isSelected ? '<span style="color:var(--accent); font-size:0.75rem;">(Active)</span>' : ''}</td>
+              <td style="color:var(--income);">${formatter.format(incM)}</td>
+              <td style="color:var(--expense);">${formatter.format(expM)}</td>
+              <td style="color:var(--emi);">${formatter.format(emiM)}</td>
+              <td style="color:${netM >= 0 ? 'var(--income)' : 'var(--expense)'}; font-weight:700;">${formatter.format(netM)}</td>
+              <td style="color:${netM >= 0 ? 'var(--accent)' : 'var(--expense)'};">${rateM}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // -------------------------------------------------------------
+      // DASHBOARD TABLE 2: Spender Breakdown (Vinayak vs Vaishnavi)
+      // -------------------------------------------------------------
+      const users = ['Vinayak', 'Vaishnavi'];
+      const tableUserEl = document.getElementById('table-user-summary');
+      
+      tableUserEl.innerHTML = users.map(u => {
+        const uExpenses = currentMonthExpenses.filter(r => r.created_by === u);
+        const uTotal = uExpenses.reduce((s, r) => s + r.amount, 0);
+        const uCount = uExpenses.length;
+        const share = totalExpMonth > 0 ? ((uTotal / totalExpMonth) * 100).toFixed(1) + '%' : '0%';
+
+        // Find top category for user
+        const catMap = {};
+        uExpenses.forEach(r => { catMap[r.category] = (catMap[r.category] || 0) + r.amount; });
+        let topCat = 'None';
+        let maxAmt = 0;
+        Object.entries(catMap).forEach(([cat, amt]) => {
+          if (amt > maxAmt) { maxAmt = amt; topCat = cat; }
+        });
+
+        return `
+          <tr>
+            <td><span class="tag-user">${u}</span></td>
+            <td style="font-weight:700; color:var(--expense);">${formatter.format(uTotal)}</td>
+            <td>${uCount} items</td>
+            <td>${topCat} ${maxAmt > 0 ? '(' + formatter.format(maxAmt) + ')' : ''}</td>
+            <td><b>${share}</b></td>
+          </tr>
+        `;
+      }).join('');
+
+      // -------------------------------------------------------------
+      // DASHBOARD TABLE 3: Category Breakdown for Selected Month
+      // -------------------------------------------------------------
+      const categoriesMap = {};
+      const catCountMap = {};
+      currentMonthExpenses.forEach(r => {
+        categoriesMap[r.category] = (categoriesMap[r.category] || 0) + r.amount;
+        catCountMap[r.category] = (catCountMap[r.category] || 0) + 1;
+      });
+
+      const tableCatEl = document.getElementById('table-category-summary');
+      const catKeys = Object.keys(categoriesMap);
+      if (catKeys.length === 0) {
+        tableCatEl.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">No expenses logged for ${selectedMonth}.</td></tr>`;
+      } else {
+        catKeys.sort((a,b) => categoriesMap[b] - categoriesMap[a]);
+        tableCatEl.innerHTML = catKeys.map(cat => {
+          const amt = categoriesMap[cat];
+          const count = catCountMap[cat];
+          const pct = totalExpMonth > 0 ? ((amt / totalExpMonth) * 100).toFixed(1) + '%' : '0%';
+          return `
+            <tr>
+              <td><b>${cat}</b></td>
+              <td style="font-weight:700; color:var(--expense);">${formatter.format(amt)}</td>
+              <td>${count} transactions</td>
+              <td><span style="color:var(--accent); font-weight:600;">${pct}</span></td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // -------------------------------------------------------------
+      // Feeds Rendering
+      // -------------------------------------------------------------
+      renderCategory('expense', (r) => {
+        const msg = encodeURIComponent(`💰 *Expense Logged*
+• Amount: ${formatter.format(r.amount)}
+• Purpose: ${r.title}
+• Category: ${r.category}
+• Logged By: ${r.created_by}`);
+        return `
+          <div class="entry">
+            <div class="entry-main">
+              <span class="entry-title">${r.title}</span>
+              <span class="entry-sub">
+                <span class="tag-user">${r.created_by}</span>
+                <span style="color:#38bdf8;">📅 ${r.expenseDate || (r.created_at ? new Date(r.created_at).toISOString().slice(0, 10) : 'Today')}</span>
+                <span>${r.category}</span>
+              </span>
+            </div>
+            <div class="entry-right">
+              <span class="entry-amt" style="color: var(--expense);">${formatter.format(r.amount)}</span>
+              <a class="btn-share-wa" href="https://api.whatsapp.com/send?text=${msg}" target="_blank" title="Forward to WhatsApp Group">
+                💬 Share
+              </a>
+              <button class="btn-del" onclick="deleteRecord('${r.id}')">✕</button>
+            </div>
+          </div>
+        `;
+      });
+
+      renderCategory('emi', (r) => `
+        <div class="entry">
+          <div class="entry-main">
+            <span class="entry-title">${r.title}</span>
+            <span class="entry-sub">
+              <span class="tag-user">${r.created_by}</span>
+              <span class="tag-emi-day">${r.emiDay}th of month</span>
+              <span>${r.bank} • Alerts: ${r.remindDaysBefore || 3}d before</span>
+            </span>
+          </div>
+          <div class="entry-right">
+            <span class="entry-amt" style="color: var(--emi);">${formatter.format(r.amount)}/mo</span>
+            <button class="btn-del" onclick="deleteRecord('${r.id}')">✕</button>
+          </div>
+        </div>
+      `);
+
+      renderCategory('income', (r) => `
+        <div class="entry">
+          <div class="entry-main">
+            <span class="entry-title">${r.title}</span>
+            <span class="entry-sub"><span class="tag-user">${r.created_by}</span> Month: ${r.month}</span>
+          </div>
+          <div class="entry-right">
+            <span class="entry-amt" style="color: var(--income);">${formatter.format(r.amount)}</span>
+            <button class="btn-del" onclick="deleteRecord('${r.id}')">✕</button>
+          </div>
+        </div>
+      `);
+
+      renderCategory('debt', (r) => `
+        <div class="entry ${r.settled ? 'settled-item' : ''}">
+          <div class="entry-main">
+            <span class="entry-title">${r.title}</span>
+            <span class="entry-sub"><span class="tag-user">${r.created_by}</span> ${r.dueDate ? 'Due: ' + r.dueDate : 'No due date'}</span>
+          </div>
+          <div class="entry-right">
+            <span class="entry-amt" style="color: var(--debt);">${formatter.format(r.amount)}</span>
+            <button class="btn-settle" onclick="toggleSettle('${r.id}')">${r.settled ? 'Undo' : 'Clear'}</button>
+            <button class="btn-del" onclick="deleteRecord('${r.id}')">✕</button>
+          </div>
+        </div>
+      `);
+
+      renderCategory('card', (r) => `
+        <div class="entry ${r.settled ? 'settled-item' : ''}">
+          <div class="entry-main">
+            <span class="entry-title">${r.title}</span>
+            <span class="entry-sub"><span class="tag-user">${r.created_by}</span> Due: ${r.dueDate}</span>
+          </div>
+          <div class="entry-right">
+            <span class="entry-amt" style="color: var(--cc);">${formatter.format(r.amount)}</span>
+            <button class="btn-settle" onclick="toggleSettle('${r.id}')">${r.settled ? 'Undo' : 'Paid'}</button>
+            <button class="btn-del" onclick="deleteRecord('${r.id}')">✕</button>
+          </div>
+        </div>
+      `);
+
+      checkAndTriggerReminders();
+    }
+
+    function renderCategory(type, templateFn) {
+      const container = document.getElementById(`feed-${type}`);
+      const list = records.filter(r => r.type === type);
+      if (list.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:18px; color:var(--text-muted); font-size:0.8rem;">No records logged yet.</div>`;
+      } else {
+        container.innerHTML = list.map(templateFn).join('');
+      }
+    }
+
+    /* PowerPoint Generator (.pptx) */
+    function generatePPT() {
+      if (typeof PptxGenJS === 'undefined') {
+        alert('Presentation library is loading, please check your internet connection.');
+        return;
+      }
+
+      const pptx = new PptxGenJS();
+      pptx.layout = 'LAYOUT_WIDE';
+
+      const selectedMonth = document.getElementById('dashboard-month').value || currentYearMonth;
+      const currentMonthExpenses = records.filter(r => r.type === 'expense' && getRecordMonth(r) === selectedMonth);
+      const currentMonthIncome = records.filter(r => r.type === 'income' && (r.month === selectedMonth || getRecordMonth(r) === selectedMonth));
+      const activeEmis = records.filter(r => r.type === 'emi');
+
+      const totalExp = currentMonthExpenses.reduce((s, r) => s + r.amount, 0);
+      const totalInc = currentMonthIncome.reduce((s, r) => s + r.amount, 0);
+      const totalEmi = activeEmis.reduce((s, r) => s + r.amount, 0);
+      const netSavings = totalInc - (totalExp + totalEmi);
+      const totalDebt = records.filter(r => r.type === 'debt' && !r.settled).reduce((s, r) => s + r.amount, 0);
+      const totalCard = records.filter(r => r.type === 'card' && !r.settled).reduce((s, r) => s + r.amount, 0);
+
+      // SLIDE 1: Title
+      const slide1 = pptx.addSlide();
+      slide1.background = { color: '0B1120' };
+      slide1.addText('MONTH-END FINANCIAL REVIEW', {
+        x: 1.0, y: 2.2, w: 11.3, h: 0.8,
+        fontSize: 34, bold: true, color: '38BDF8', fontFace: 'Calibri'
+      });
+      slide1.addText(`Household Income, Expenses, EMIs & Net Savings Report • Month: ${selectedMonth}`, {
+        x: 1.0, y: 3.1, w: 11.3, h: 0.6,
+        fontSize: 16, color: '94A3B8', fontFace: 'Calibri'
+      });
+      slide1.addText(`Prepared for: Vinayak & Vaishnavi • Generated on: ${new Date().toLocaleDateString('en-IN')}`, {
+        x: 1.0, y: 6.2, w: 11.3, h: 0.4,
+        fontSize: 12, color: '64748B', fontFace: 'Calibri'
+      });
+
+      // SLIDE 2: Financial Dashboard
+      const slide2 = pptx.addSlide();
+      slide2.background = { color: '0F172A' };
+      slide2.addText(`Financial Overview (${selectedMonth})`, {
+        x: 0.8, y: 0.6, w: 10, h: 0.5,
+        fontSize: 22, bold: true, color: 'F8FAFC', fontFace: 'Calibri'
+      });
+
+      slide2.addShape(pptx.ShapeType.roundRect, { x: 0.8, y: 1.4, w: 2.2, h: 1.8, fill: { color: '1E293B' }, line: { color: '334155', width: 1 }, rectRadius: 0.1 });
+      slide2.addText('TOTAL INCOME', { x: 0.9, y: 1.6, w: 2.0, h: 0.3, fontSize: 10, bold: true, color: '94A3B8' });
+      slide2.addText(`₹${totalInc.toLocaleString('en-IN')}`, { x: 0.9, y: 2.1, w: 2.0, h: 0.5, fontSize: 20, bold: true, color: '34D399' });
+
+      slide2.addShape(pptx.ShapeType.roundRect, { x: 3.2, y: 1.4, w: 2.2, h: 1.8, fill: { color: '1E293B' }, line: { color: '334155', width: 1 }, rectRadius: 0.1 });
+      slide2.addText('EXPENSES', { x: 3.3, y: 1.6, w: 2.0, h: 0.3, fontSize: 10, bold: true, color: '94A3B8' });
+      slide2.addText(`₹${totalExp.toLocaleString('en-IN')}`, { x: 3.3, y: 2.1, w: 2.0, h: 0.5, fontSize: 20, bold: true, color: 'F87171' });
+
+      slide2.addShape(pptx.ShapeType.roundRect, { x: 5.6, y: 1.4, w: 2.2, h: 1.8, fill: { color: '1E293B' }, line: { color: '334155', width: 1 }, rectRadius: 0.1 });
+      slide2.addText('MONTHLY EMIS', { x: 5.7, y: 1.6, w: 2.0, h: 0.3, fontSize: 10, bold: true, color: '94A3B8' });
+      slide2.addText(`₹${totalEmi.toLocaleString('en-IN')}`, { x: 5.7, y: 2.1, w: 2.0, h: 0.5, fontSize: 20, bold: true, color: 'F43F5E' });
+
+      slide2.addShape(pptx.ShapeType.roundRect, { x: 8.0, y: 1.4, w: 2.2, h: 1.8, fill: { color: '1E293B' }, line: { color: '334155', width: 1 }, rectRadius: 0.1 });
+      slide2.addText('NET SAVINGS', { x: 8.1, y: 1.6, w: 2.0, h: 0.3, fontSize: 10, bold: true, color: '94A3B8' });
+      slide2.addText(`₹${netSavings.toLocaleString('en-IN')}`, {
+        x: 8.1, y: 2.1, w: 2.0, h: 0.5, fontSize: 20, bold: true,
+        color: netSavings >= 0 ? '38BDF8' : 'F87171'
+      });
+
+      slide2.addShape(pptx.ShapeType.roundRect, { x: 10.4, y: 1.4, w: 2.2, h: 1.8, fill: { color: '1E293B' }, line: { color: '334155', width: 1 }, rectRadius: 0.1 });
+      slide2.addText('TOTAL DEBT & CC', { x: 10.5, y: 1.6, w: 2.0, h: 0.3, fontSize: 10, bold: true, color: '94A3B8' });
+      slide2.addText(`₹${(totalDebt + totalCard).toLocaleString('en-IN')}`, { x: 10.5, y: 2.1, w: 2.0, h: 0.5, fontSize: 20, bold: true, color: 'FBBF24' });
+
+      const savingsRate = totalInc > 0 ? ((netSavings / totalInc) * 100).toFixed(1) : 0;
+      slide2.addShape(pptx.ShapeType.roundRect, { x: 0.8, y: 3.6, w: 11.8, h: 3.0, fill: { color: '1E293B' }, line: { color: '334155', width: 1 }, rectRadius: 0.1 });
+      slide2.addText('Household Financial Insights:', { x: 1.1, y: 3.9, w: 11.0, h: 0.4, fontSize: 15, bold: true, color: '38BDF8' });
+      slide2.addText([
+        { text: `• Effective Savings Rate: `, options: { bold: true, color: 'FFFFFF' } },
+        { text: `${savingsRate}% of combined earnings retained after all living costs and EMIs for ${selectedMonth}.
+`, options: { color: 'CBD5E1' } },
+        { text: `• Committed EMI Outflow: `, options: { bold: true, color: 'FFFFFF' } },
+        { text: `₹${totalEmi.toLocaleString('en-IN')} committed monthly across loan schedules.
+`, options: { color: 'CBD5E1' } },
+        { text: `• Other Short-Term Liabilities: `, options: { bold: true, color: 'FFFFFF' } },
+        { text: `₹${totalDebt.toLocaleString('en-IN')} in hand loans + ₹${totalCard.toLocaleString('en-IN')} pending on credit card statements.`, options: { color: 'CBD5E1' } }
+      ], { x: 1.1, y: 4.4, w: 11.0, h: 1.8, fontSize: 13, lineSpacing: 22 });
+
+      // SLIDE 3: EMI Table
+      const slide3 = pptx.addSlide();
+      slide3.background = { color: '0F172A' };
+      slide3.addText('Active EMI Deduction Schedule', {
+        x: 0.8, y: 0.6, w: 10, h: 0.5,
+        fontSize: 22, bold: true, color: 'F8FAFC', fontFace: 'Calibri'
+      });
+
+      const emiHeaders = [
+        [
+          { text: 'Loan / Asset Name', options: { bold: true, fill: { color: '334155' }, color: 'FFFFFF' } },
+          { text: 'Deduction Date', options: { bold: true, fill: { color: '334155' }, color: 'FFFFFF' } },
+          { text: 'Lender / Debit Bank', options: { bold: true, fill: { color: '334155' }, color: 'FFFFFF' } },
+          { text: 'Reminder Lead Time', options: { bold: true, fill: { color: '334155' }, color: 'FFFFFF' } },
+          { text: 'Monthly Amount', options: { bold: true, fill: { color: '334155' }, color: 'FFFFFF' } }
+        ]
+      ];
+
+      const emiRows = activeEmis.slice(0, 10).map(item => [
+        { text: item.title, options: { color: 'CBD5E1' } },
+        { text: `${item.emiDay}th of each month`, options: { color: 'CBD5E1' } },
+        { text: item.bank || 'Bank Auto-Debit', options: { color: 'CBD5E1' } },
+        { text: `${item.remindDaysBefore || 3} Days Prior`, options: { color: 'CBD5E1' } },
+        { text: `₹${item.amount.toLocaleString('en-IN')}`, options: { bold: true, color: 'F43F5E' } }
+      ]);
+
+      const emiTableData = emiHeaders.concat(emiRows.length > 0 ? emiRows : [
+        [{ text: 'No active EMIs registered', options: { colspan: 5, color: '94A3B8' } }]
+      ]);
+
+      slide3.addTable(emiTableData, {
+        x: 0.8, y: 1.4, w: 11.8,
+        fill: { color: '1E293B' },
+        border: { pt: '1', color: '334155' },
+        fontSize: 11,
+        rowH: 0.4
+      });
+
+      // SLIDE 4: Expense Breakdown Table
+      const slide4 = pptx.addSlide();
+      slide4.background = { color: '0F172A' };
+      slide4.addText(`Expense Records (${selectedMonth})`, {
+        x: 0.8, y: 0.6, w: 10, h: 0.5,
+        fontSize: 22, bold: true, color: 'F8FAFC', fontFace: 'Calibri'
+      });
+
+      const tableHeaders = [
+        [
+          { text: 'Date', options: { bold: true, fill: { color: '334155' }, color: 'FFFFFF' } },
+          { text: 'Description', options: { bold: true, fill: { color: '334155' }, color: 'FFFFFF' } },
+          { text: 'Category', options: { bold: true, fill: { color: '334155' }, color: 'FFFFFF' } },
+          { text: 'Logged By', options: { bold: true, fill: { color: '334155' }, color: 'FFFFFF' } },
+          { text: 'Amount', options: { bold: true, fill: { color: '334155' }, color: 'FFFFFF' } }
+        ]
+      ];
+
+      const tableRows = currentMonthExpenses.slice(0, 10).map(item => [
+        { text: item.expenseDate || (item.created_at ? item.created_at.slice(0, 10) : 'N/A'), options: { color: 'CBD5E1' } },
+        { text: item.title, options: { color: 'CBD5E1' } },
+        { text: item.category, options: { color: 'CBD5E1' } },
+        { text: item.created_by, options: { color: 'CBD5E1' } },
+        { text: `₹${item.amount.toLocaleString('en-IN')}`, options: { bold: true, color: 'F87171' } }
+      ]);
+
+      const tableData = tableHeaders.concat(tableRows.length > 0 ? tableRows : [
+        [{ text: `No expense records found for ${selectedMonth}`, options: { colspan: 5, color: '94A3B8' } }]
+      ]);
+
+      slide4.addTable(tableData, {
+        x: 0.8, y: 1.4, w: 11.8,
+        fill: { color: '1E293B' },
+        border: { pt: '1', color: '334155' },
+        fontSize: 11,
+        rowH: 0.4
+      });
+
+      pptx.writeFile({ fileName: `Vinayak_Vaishnavi_Finance_${selectedMonth}.pptx` });
+    }
+
+    render();
+  </script>
+</body>
+</html>
