@@ -1001,8 +1001,7 @@
       }
       if (res && res.error) {
         console.error("Supabase Sync Error:", res.error);
-        alert("Sync Warning: " + res.error.message + "
-Please ensure you ran the complete SQL schema in Supabase.");
+        alert("Sync Warning: " + res.error.message + "\n\nPlease ensure you ran the complete SQL schema in Supabase.");
       }
     }
 
