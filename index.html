@@ -521,7 +521,10 @@
 
     <!-- Month Filter Bar for Dashboard Analysis -->
     <div class="month-filter-bar">
-      <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Selected View Month:</span>
+      <div>
+        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Financial Cycle Month:</span>
+        <span style="font-size: 0.75rem; color: var(--accent); margin-left: 6px;">(24th to 23rd billing cycle)</span>
+      </div>
       <input type="month" id="dashboard-month" style="padding: 6px 10px; width: 170px;" onchange="render()">
     </div>
 
@@ -759,7 +762,7 @@
       maximumFractionDigits: 0
     });
 
-    const currentYearMonth = new Date().toISOString().slice(0, 7);
+    const currentYearMonth = getFinancialCycle(new Date());
     document.getElementById('dashboard-month').value = currentYearMonth;
     document.getElementById('inc-month').value = currentYearMonth;
     if (document.getElementById('exp-date')) {
@@ -881,12 +884,64 @@
       });
     }
 
-    // Helper to get month string YYYY-MM
+    function getCycleDateRangeText(yearMonthStr) {
+      const parts = yearMonthStr.split('-');
+      const y = parseInt(parts[0]);
+      const m = parseInt(parts[1]); // 1-12
+      // Prev month:
+      const prevDate = new Date(y, m - 2, 1);
+      const prevMonthName = prevDate.toLocaleDateString('en-US', { month: 'short' });
+      const currDate = new Date(y, m - 1, 1);
+      const currMonthName = currDate.toLocaleDateString('en-US', { month: 'short' });
+      return `${prevMonthName} - 23 ${currMonthName}`;
+    }
+
+    // Helper: Determine Financial Cycle Month (starts on 24th of each month)
+    // Example: Sep 24 to Oct 23 -> "2026-10 (Oct Cycle)"
+    function getFinancialCycle(dateInput) {
+      if (!dateInput) dateInput = new Date();
+      let d;
+      if (typeof dateInput === 'string') {
+        if (/^\d{4}-\d{2}$/.test(dateInput)) {
+          // Already a YYYY-MM cycle
+          return dateInput;
+        }
+        d = new Date(dateInput);
+        if (isNaN(d.getTime())) {
+          // fallback string parsing for YYYY-MM-DD
+          const parts = dateInput.split('-');
+          if (parts.length >= 3) {
+            d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          } else {
+            d = new Date();
+          }
+        }
+      } else {
+        d = new Date(dateInput);
+      }
+
+      let year = d.getFullYear();
+      let month = d.getMonth(); // 0-indexed: 8 = Sep, 9 = Oct
+      let day = d.getDate();
+
+      // If on or after the 24th, it shifts into the next month's cycle
+      if (day >= 24) {
+        month += 1;
+        if (month > 11) {
+          month = 0;
+          year += 1;
+        }
+      }
+
+      const mm = String(month + 1).padStart(2, '0');
+      return `${year}-${mm}`;
+    }
+
     function getRecordMonth(record) {
-      if (record.month) return record.month;
-      if (record.expenseDate) return record.expenseDate.slice(0, 7);
-      if (record.created_at) return record.created_at.slice(0, 7);
-      return new Date().toISOString().slice(0, 7);
+      if (record.month && /^\d{4}-\d{2}$/.test(record.month)) return record.month;
+      if (record.expenseDate) return getFinancialCycle(record.expenseDate);
+      if (record.created_at) return getFinancialCycle(record.created_at);
+      return getFinancialCycle(new Date());
     }
 
     // WhatsApp Message Helper
@@ -1106,7 +1161,10 @@
 
           return `
             <tr style="${isSelected ? 'background: rgba(56, 189, 248, 0.08); font-weight:600;' : ''}">
-              <td><b>${m}</b> ${isSelected ? '<span style="color:var(--accent); font-size:0.75rem;">(Active)</span>' : ''}</td>
+              <td>
+                <b>${m}</b> ${isSelected ? '<span style="color:var(--accent); font-size:0.75rem;">(Active)</span>' : ''}
+                <div style="font-size:0.72rem; color:var(--text-muted); font-weight:normal;">24 ${getCycleDateRangeText(m)}</div>
+              </td>
               <td style="color:var(--income);">${formatter.format(incM)}</td>
               <td style="color:var(--expense);">${formatter.format(expM)}</td>
               <td style="color:var(--emi);">${formatter.format(emiM)}</td>
@@ -1195,7 +1253,7 @@
               <span class="entry-title">${r.title}</span>
               <span class="entry-sub">
                 <span class="tag-user">${r.created_by}</span>
-                <span style="color:#38bdf8;">📅 ${r.expenseDate || (r.created_at ? new Date(r.created_at).toISOString().slice(0, 10) : 'Today')}</span>
+                <span style="color:#38bdf8;">📅 ${r.expenseDate || (r.created_at ? new Date(r.created_at).toISOString().slice(0, 10) : 'Today')} (${getRecordMonth(r).slice(5)} Cycle)</span>
                 <span>${r.category}</span>
               </span>
             </div>
